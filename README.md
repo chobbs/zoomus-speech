@@ -1,4 +1,4 @@
-# Zoom Meeting Context Terms
+# Extract Context from Zoom Meeting
 
 ## Motivation
 
