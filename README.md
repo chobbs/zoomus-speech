@@ -8,7 +8,7 @@ extract sales taxonomy terms from a Zoom cloud meeting recording for the context
 
 ```js
 
-Sample Output
+Sample Frequency Output
 
 Fetching Zoom Cloud Recording Object
 Downloaded Zoom.mp4 meeting file
