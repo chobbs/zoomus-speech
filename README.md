@@ -1,4 +1,4 @@
-# Extract Context from Zoom Meeting
+# Extract Context from Zoom Recording
 
 ## Motivation
 
