@@ -2,8 +2,8 @@
 
 ## Motivation
 
-This is a simple example combining the Zoom.us API and Google Speech API. Small example to demonstrate to
-extract sales taxonomy terms from a Zoom cloud meeting recording for the context of the call.
+This is a simple example combining the Zoom.us API and Google Speech API. Conceptual demonstration showing how to
+extract sales taxonomy terms from a Zoom cloud meeting recording.
 
 
 ```js
