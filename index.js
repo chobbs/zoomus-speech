@@ -3,53 +3,55 @@ var ffmpeg = require('fluent-ffmpeg');
 var fs = require('fs');
 var count = require('quickly-count-substrings')
 
-//Include the zoom library
+//Include the Zoom.us library
 var Zoom = require("zoomus")({
-    "key" : "mBWDvhfBQvKiNrblHA600Q",
-    "secret" : "QryWblvWsu3lqMKFcs8Gfxx1LybtJL9PNzsf"
+    "key" : "<your_zoom_api_key>",
+    "secret" : "<your_zoom_api_secret>"
 });
 
+//User Zoom.us ID
 var myrecording = {
-    host_id: "ryfKyUS0S3CQnxW95_u00Q"
+    host_id: "<your_zoom_host_id>"
 }
 
-// Define Google client and auth
+// Define Google client
 var speech = require('@google-cloud/speech');
 
+// Define Google private-key file
 var client = new speech.SpeechClient({
-    keyFilename: '/Users/mrstark/Documents/gsuite/VoiceToSpeech-a4b2c3d045a2.json'
+    keyFilename: '<your_google_private_key>'
 });
 
-var fileName = "/Users/mrstark/Desktop/myzoom.wav";
-var dest = '/Users/mrstark/Desktop/myzoom.mp4';//your path to source file
+// Local file PATH variables
+var fileName = "/Users/mrstark/Desktop/convFile.wav";
+var fileZoom = '/Users/mrstark/Desktop/zoomFile.mp4';//your path to source file
 
+//init
 
-//Debug-only console print message
-
-var displayResult = function(result) {
-    console.log(JSON.stringify(result, null, 2));
-
-};
-
-console.log("Fetching Zoom Cloud Meeting Details");
+console.log("Fetching Zoom Cloud Recording Object");
 fetchRecording (myrecording);
 
 function fetchRecording(recording) {
+    // 1. Get Zoom meeting obj
     Zoom.recording.list(recording, function (res) {
         if (res.error) {
             //handle error
         } else {
-            // 1. Download Zoom mp4 from server
-            var downloadURL = res.meetings[0].recording_files[0].download_url;
-            download(downloadURL, dest, function (err) {
+            // 3. Variables declaration (this is hackey !!??!!)
+            // 2. Download Zoom mp4 file from server
+            download(res.meetings[0].recording_files[0].download_url, fileZoom, function (err) {
                 if (err) {
                     console.error(err);
                 } else {
-                    console.log("Downloaded Zoom.mp4 meeting file.");
+                    console.log("Downloaded Zoom.mp4 meeting file");
                     // 2. Convert Zoom mp4 to .wav file
-                    convertSrc(dest);
+                    convertSrc(fileZoom);
                     setTimeout(function(){
-                        extractTxt();
+                        extractTxt(fileName, function (transcription) {
+                            if (transcription) {
+                                countTerms(transcription, res)
+                            }
+                })
                     }, 10000);
                 }
             })
@@ -57,35 +59,33 @@ function fetchRecording(recording) {
     })
 };
 
+// MuFunc: Converting MP$ files to proper codec
 
-function convertSrc(track) {
-    console.log("Converting to new Zoom.wav file.");
+function convertSrc(trackFile) {
+    console.log("Converting (.mp4)-to-(.wav) file");
 
-
-    ffmpeg(track)
+    ffmpeg(trackFile)
         .toFormat('wav')
         .audioFrequency('16000')
         .audioChannels('1')
         .on('error', function (err) {
             console.log('An error occurred: ' + err.message);
-        //})
-        //.on('progress', function (progress) {
-            // console.log(JSON.stringify(progress));
-            //console.log('Processing: ' + progress.targetSize + ' KB converted');
         })
         .on('end', function () {
-            console.log('File conversion processing finished !');
+            console.log('Codec processing finished, writing local file');
         })
         .save(fileName);//path where you want to save your file
 
 };
 
-function extractTxt () {
+// MuFunc: GoogleSpeech API
 
-    console.log('Google Extracting Sales-Taxonomy =>');
+function extractTxt (extFile, cb) {
+
+    console.log('Google-Speech API => Extracting Sales-Taxonomy: ');
 
 // Reads a local audio file and converts it to base64
-    var file = fs.readFileSync(fileName);
+    var file = fs.readFileSync(extFile);
     var audioBytes = file.toString('base64');
 
 // The audio file's encoding, sample rate in hertz, and BCP-47 language code
@@ -111,12 +111,15 @@ function extractTxt () {
                 .map(result => result.alternatives[0].transcript)
                 .join('\n');
             //console.log(`Transcription: ${transcription}`);
-            countTerms(transcription);
+            //countTerms(transcription);
+            return cb(transcription);
         })
         .catch(err => {
             console.error('ERROR:', err);
         });
 }
+
+// MuFunc: Download localFile from URL
 
 function download(url, dest, cb) {
     var file = fs.createWriteStream(dest);
@@ -155,19 +158,27 @@ function download(url, dest, cb) {
     });
 }
 
-function countTerms (transcribe) {
+// MuFunc: Extract-Count Sales Taxonomy Terms
+
+function countTerms (transcribe, results) {
+    //Get additional values from meeting obj from terms to watch for
+
+    var meetingTopic = results.meetings[0].topic;
+    var meetingStart = results.meetings[0].start_time;
+    var meetingLength = results.meetings[0].duration;
+    console.log("\n" + "Meeting Topic: " + meetingTopic + " , Meeting Start: " + meetingStart + " , Meeting Duration: " + meetingLength + 'min(s)');
+
     //sales terms to watch for
     // price, legal, cost, demo,
-
-    var terms = ['price','cost','demo', 'legal', 'procurment'];
+    var terms = ['price','cost','demo', 'legal', 'procurment','blocker', 'value'];
     for(var i=0, l = terms.length; i < l; i++){
-        //count(str, items[i])
-        //console.log(terms[i] + " : " + count(transcribe, terms[i]));
         console.log(count(transcribe, terms[i]) + ": " + terms[i]);
 
     }
 
 }
+
+// MuFunc: Helper
 
 function checkIfFile(file, cb) {
     fs.stat(file, function fsStat(err, stats) {
@@ -181,3 +192,13 @@ function checkIfFile(file, cb) {
         return cb(null, stats.isFile());
     });
 }
+
+// MuFunc: Helper
+
+function displayJSON() {
+
+    var displayResult = function (result) {
+        console.log(JSON.stringify(result, null, 2));
+
+    }
+};
